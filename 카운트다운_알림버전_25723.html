@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D-Day Countdown Test</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard/dist/web/static/pretendard.css">
+<style>
+  body {
+    font-family: 'Pretendard', sans-serif;
+    background: #FFFFFF;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+  }
+  #dday-app {
+    max-width: 400px;
+    margin: 20px auto;
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 20px;
+  }
+  h3 {
+    color: #000CFE;
+    margin-bottom: 10px;
+  }
+  input, button, select {
+    font-family: 'Pretendard', sans-serif;
+    padding: 10px 15px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 2px solid #000CFE;
+  }
+  button {
+    background: #000CFE;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-left: 8px;
+    font-weight: 600;
+    transition: background 0.2s ease;
+  }
+  button:hover {
+    background: #0009e6;
+  }
+  .flip-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  .flip {
+    width: 80px;
+    height: 100px;
+    border-radius: 8px;
+    color: #000CFE;
+    font-weight: bold;
+    font-size: 36px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid #000CFE;
+    background: #f5f5f5;
+  }
+  .label-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 5px;
+  }
+  .label {
+    width: 80px;
+    text-align: center;
+    color: #000CFE;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div id="dday-app">
+  <h3 contenteditable="true" style="outline:none;">✏ 제목을 입력해주세요</h3>
+
+  <div class="flip-container">
+    <div class="flip" id="days">00</div>
+    <div class="flip" id="hours">00</div>
+    <div class="flip" id="minutes">00</div>
+  </div>
+  <div class="label-container">
+    <div class="label">DAYS</div>
+    <div class="label">HOURS</div>
+    <div class="label">MINUTES</div>
+  </div>
+
+  <!-- ✅ 날짜 + 알림 설정 + 리셋 버튼 -->
+  <div style="margin-top:15px;">
+    <input type="date" id="targetDate">
+    <select id="notifyOption">
+      <option value="">알림 없음</option>
+      <option value="0">당일 (오전 9:00)</option>
+      <option value="1">1일 전 (오전 9:00)</option>
+    </select>
+    <button id="setDate">설정</button>
+    <button id="reset" style="background:#E0E0E0; color:#000CFE;">리셋</button>
+    <button id="testNotify" style="margin-left:5px; background:#FF5722;">테스트 알림</button>
+  </div>
+</div>
+
+<script>
+let countdownTimer;
+let savedDate = localStorage.getItem("targetDate") || "";
+let savedNotify = localStorage.getItem("notifyOption") || "";
+
+// ✅ 화면 초기화 (저장된 값 불러오기)
+if (savedDate) document.getElementById("targetDate").value = savedDate;
+if (savedNotify) document.getElementById("notifyOption").value = savedNotify;
+
+// ✅ 카운트다운 갱신 함수
+function updateDisplay(elementId, newValue) {
+  const element = document.getElementById(elementId);
+  if (element.textContent !== newValue) {
+    element.textContent = newValue;
+  }
+}
+
+function startCountdown(targetDate) {
+  if (countdownTimer) clearInterval(countdownTimer);
+
+  function update() {
+    const now = new Date().getTime();
+    const distance = targetDate - now;
+
+    if (distance <= 0) {
+      clearInterval(countdownTimer);
+      ["days", "hours", "minutes"].forEach(id => updateDisplay(id, "00"));
+      return;
+    }
+
+    const days = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, "0");
+    const hours = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, "0");
+    const minutes = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, "0");
+
+    updateDisplay("days", days);
+    updateDisplay("hours", hours);
+    updateDisplay("minutes", minutes);
+  }
+
+  update();
+  countdownTimer = setInterval(update, 60000);
+}
+
+// ✅ 설정 버튼
+document.getElementById("setDate").addEventListener("click", () => {
+  const selectedDate = document.getElementById("targetDate").value;
+  const notifyOption = document.getElementById("notifyOption").value;
+
+  if (!selectedDate) {
+    alert("날짜를 선택해주세요!");
+    return;
+  }
+
+  localStorage.setItem("targetDate", selectedDate);
+  localStorage.setItem("notifyOption", notifyOption);
+
+  const targetDate = new Date(selectedDate + "T00:00:00").getTime();
+  startCountdown(targetDate);
+
+  alert("설정이 저장되었습니다!");
+});
+
+// ✅ 리셋 버튼
+document.getElementById("reset").addEventListener("click", () => {
+  localStorage.removeItem("targetDate");
+  localStorage.removeItem("notifyOption");
+  document.getElementById("targetDate").value = "";
+  document.getElementById("notifyOption").value = "";
+  ["days", "hours", "minutes"].forEach(id => updateDisplay(id, "00"));
+  alert("설정이 초기화되었습니다!");
+});
+
+// ✅ 테스트 알림 (3초 후 알림)
+document.getElementById("testNotify").addEventListener("click", () => {
+  if (Notification.permission === "default") {
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        setTimeout(() => {
+          new Notification("⏰ 테스트 알림", {
+            body: "이것은 3초 후에 울린 테스트 알림입니다!",
+            icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png"
+          });
+        }, 3000);
+      } else {
+        alert("알림 권한이 허용되지 않았습니다.");
+      }
+    });
+  } else if (Notification.permission === "granted") {
+    setTimeout(() => {
+      new Notification("⏰ 테스트 알림", {
+        body: "이것은 3초 후에 울린 테스트 알림입니다!",
+        icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png"
+      });
+    }, 3000);
+  } else {
+    alert("브라우저에서 알림 권한을 허용해주세요.");
+  }
+});
+
+// ✅ 초기 실행 (저장된 값이 있으면 실행)
+if (savedDate) {
+  const targetDate = new Date(savedDate + "T00:00:00").getTime();
+  startCountdown(targetDate);
+}
+</script>
+</body>
+</html>
